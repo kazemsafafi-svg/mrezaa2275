@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="utf-8" />
+  <title>MapLibre GL Enhanced - 100% Fixed</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="./libs/maplibre-gl.css" />
+  <link rel="stylesheet" href="./libs/mapbox-gl-draw.css" />
+
+<style>
+html, body, #map { margin:0; padding:0; height:100%; }
+
+.maplibregl-popup { z-index:1000; }
+
+.maplibregl-popup-content {
+  background:rgba(18,18,18,0.95); color:#eaeaea;
+  padding:16px; border-radius:12px;
+  width:auto; min-width:220px; max-width:260px;
+  font-family:"Vazirmatn","Tahoma",sans-serif;
+  font-size:13px; font-weight:700;
+  direction:rtl; text-align:right; line-height:1.6;
+  border:1px solid rgba(255,255,255,0.1);
+  box-shadow:0 10px 22px rgba(0,0,0,0.45);
+  animation:popupFade 0.28s ease-out forwards;
+}
+@keyframes popupFade {
+  from { opacity:0; transform:translateY(6px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.maplibregl-popup-tip { border-top-color:rgba(30,30,30,0.92); }
+
+.route-btn, .SelectedBtn, .delete-btn {
+  width:100%; padding:10px 12px; box-sizing:border-box;
+  border:none; border-radius:8px;
+  font-family:"Vazirmatn","Tahoma",sans-serif;
+  font-size:13px; font-weight:700; cursor:pointer;
+  display:flex; justify-content:center; align-items:center; gap:8px;
+  transition:transform .15s ease;
+  box-shadow:0 4px 10px rgba(0,0,0,0.18);
+}
+.route-btn:hover, .SelectedBtn:hover, .delete-btn:hover {
+  transform:translateY(-2px) scale(1.02);
+}
+.route-btn   { background:linear-gradient(135deg,#00c6ff,#0072ff); color:#fff; }
+.SelectedBtn { background:#f39c12; color:#fff; }
+.SelectedBtn:hover { background:#d68910; }
+.delete-btn  { background:#d90000; color:#fff; }
+.delete-btn:hover { background:#a30000; }
+
+.maplibregl-popup-content select {
+  width:100%; padding:10px 12px; box-sizing:border-box;
+  border:none; border-radius:8px;
+  background:#f5f5f5; color:#333;
+  font-family:"Vazirmatn","Tahoma",sans-serif;
+  font-size:13px; font-weight:700;
+  direction:rtl; cursor:pointer;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,0.08);
+}
+.maplibregl-popup-content select option { background:#f5f5f5; color:#333; }
+
+#coordEditPanel {
+  position:absolute; bottom:36px; left:50%; transform:translateX(-50%);
+  z-index:2000; background:rgba(16,16,16,0.97);
+  border:1px solid rgba(255,255,255,.15); border-radius:12px;
+  padding:14px 18px 12px; min-width:360px; max-width:520px;
+  max-height:72vh; overflow-y:auto;
+  box-shadow:0 8px 28px rgba(0,0,0,.6);
+  font-family:"Vazirmatn","Tahoma",sans-serif; direction:rtl; color:#eaeaea; display:none;
+}
+#coordEditPanel label,.edit-field-label { font-size:11px; color:#888; display:block; margin-bottom:3px; }
+#coordEditPanel input[type=text],#coordEditPanel input[type=number],
+#coordEditPanel textarea,#coordEditPanel select {
+  width:100%; padding:6px 10px; box-sizing:border-box;
+  background:#1e1e1e; border:1px solid rgba(255,255,255,.18); border-radius:7px;
+  color:#fff; font-family:"Vazirmatn","Tahoma",sans-serif; font-size:13px;
+  margin-bottom:8px; outline:none; transition:border-color .2s;
+}
+#coordEditPanel input:focus,#coordEditPanel textarea:focus,#coordEditPanel select:focus { border-color:#00c6ff; }
+#coordEditPanel select option { background:#1e1e1e; }
+.coord-edit-row { display:flex; gap:10px; }
+.coord-edit-row>div { flex:1; }
+#coordEditPanel .btn-row { display:flex; gap:8px; margin-top:6px; }
+#coordEditPanel .btn-row button {
+  flex:1; padding:8px; border:none; border-radius:8px;
+  font-family:"Vazirmatn","Tahoma",sans-serif; font-size:13px; font-weight:700; cursor:pointer;
+}
+#coordEditApply  { background:linear-gradient(135deg,#00c6ff,#0072ff); color:#fff; }
+#coordEditCancel { background:#444; color:#eee; }
+.edit-field-row  { margin-bottom:2px; }
+
+.visitor-label {
+  position:absolute; right:calc(100% + 6px); top:50%; transform:translateY(-50%);
+  background:rgba(15,15,15,.85); color:#fff;
+  font-family:"Vazirmatn","Tahoma",sans-serif; font-size:11px; font-weight:600;
+  padding:2px 7px; border-radius:5px; white-space:nowrap;
+  pointer-events:none; z-index:10;
+  border:1px solid rgba(255,255,255,.15);
+}
+
+.marker {
+  width:26px; height:26px;
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(to bottom,#ffffff33,rgba(0,0,0,0.1));
+  border:1px solid rgba(255,255,255,0.3);
+  border-radius:4px; font-size:13px; font-weight:700; color:#fff;
+  text-shadow:0 0 3px #000;
+  box-shadow:0 2px 5px rgba(0,0,0,0.35);
+}
+.marker-selected-animated {
+  border:4px solid #00c8ff; border-radius:50%;
+  animation:blink 1.9s infinite ease-in-out;
+}
+@keyframes blink {
+  0%,100% { opacity:.85; }
+  50%      { opacity:1; }
+}
+
+.marker-dragging { opacity:.8; transform:scale(1.2); cursor:grabbing !important; }
+
+#tileSelector, #toggleRouteBtn, #clearRectsBtn {
+  position:absolute; z-index:100;
+  padding:8px 12px; border:none; border-radius:8px;
+  font-family:"Vazirmatn","Tahoma",sans-serif;
+  font-size:13px; font-weight:700;
+  backdrop-filter:blur(8px); background:rgba(255,255,255,0.25);
+  cursor:pointer; transition:.25s ease;
+  box-shadow:0 4px 10px rgba(0,0,0,0.2);
+}
+#tileSelector:hover, #toggleRouteBtn:hover, #clearRectsBtn:hover {
+  transform:translateY(-3px) scale(1.03);
+}
+#tileSelector  { top:10px;  right:10px; }
+#toggleRouteBtn { top:55px;  right:10px; background:linear-gradient(135deg,#00e5ffcc,#008cffcc); color:#fff; }
+#clearRectsBtn  { top:100px; right:10px; background:linear-gradient(135deg,#ff7b00cc,#ff3700cc); color:#fff; }
+
+.maplibregl-popup-content::-webkit-scrollbar       { width:6px; }
+.maplibregl-popup-content::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.3); border-radius:10px; }
+
+.popup-table { width:100%; border-collapse:collapse; font-size:12px; }
+.popup-table td { padding:4px; border-bottom:1px solid rgba(255,255,255,0.1); }
+.popup-header {
+  width:100%; padding-bottom:5px; margin-bottom:8px;
+  text-align:center; font-weight:bold;
+  border-bottom:1px solid rgba(255,255,255,0.2);
+}
+</style>
+
+<!-- ===== بخش ۱: توابع کمکی (قبل از لود کتابخانه‌ها) ===== -->
+<script>
+// ====== HAVERSINE ======
+function haversine(a, b) {
+  const toRad = x => x * Math.PI / 180;
+  const R = 6371;
+  const dLat = toRad(b[1]-a[1]), dLon = toRad(b[0]-a[0]);
+  const h = Math.sin(dLat/2)**2
+          + Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// ====== فرمت زمان ======
+function formatMinutes(mins) {
+  const total = Math.round(mins);
+  const hh = Math.floor(total / 60);
+  const mm = total % 60;
+  return hh > 0 ? `${hh} ساعت ${mm} دقیقه` : `${mm} دقیقه`;
+}
+
+// ====== SUMMARY ======
+function computeSummaryFromPts(pts, walkSpeedKmh = 5) {
+  if (!Array.isArray(pts) || pts.length < 2) return { km:0, hours:0 };
+  let km = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i-1]?.geometry?.coordinates;
+    const b = pts[i]?.geometry?.coordinates;
+    if (a && b) km += haversine(a, b);
+  }
+  return { km, hours: km / walkSpeedKmh };
+}
+
+let routeUseSelectedOnly = false;
+
+function __getActiveRoutePointSet() {
+  const g = window.lastGeoJSON;
+  if (!g?.features?.length) return null;
+  const geom = g.features[0]?.geometry;
+  if (!geom?.coordinates) return null;
+  const set = new Set();
+  geom.coordinates.forEach(c => {
+    if (Array.isArray(c) && c.length >= 2) set.add(c[0]+','+c[1]);
+  });
+  return set;
+}
+
+function buildOrderedRoutePoints(pts) {
+  if (!pts || pts.length < 2) return pts;
+  const routeSet = __getActiveRoutePointSet();
+  let cx = 0, cy = 0, count = 0;
+  pts.forEach(p => {
+    const c = p.geometry.coordinates;
+    if (routeSet && !routeSet.has(c[0]+','+c[1])) return;
+    cx += c[0]; cy += c[1]; count++;
+  });
+  if (count === 0) return pts;
+  cx /= count; cy /= count;
+
+  let startIdx = 0, maxD = -1;
+  pts.forEach((p, i) => {
+    const c = p.geometry.coordinates;
+    const d = (c[0]-cx)**2 + (c[1]-cy)**2;
+    if (d > maxD) { maxD = d; startIdx = i; }
+  });
+
+  const remaining = pts.slice();
+  const ordered = [remaining.splice(startIdx, 1)[0]];
+  while (remaining.length) {
+    const last = ordered[ordered.length-1].geometry.coordinates;
+    let bestIdx = 0, bestD = Infinity;
+    remaining.forEach((p, i) => {
+      const c = p.geometry.coordinates;
+      const d = (c[0]-last[0])**2 + (c[1]-last[1])**2;
+      if (d < bestD) { bestD = d; bestIdx = i; }
+    });
+    ordered.push(remaining.splice(bestIdx, 1)[0]);
+  }
+  return ordered;
+}
+
+function safeBuildOrderedRoutePoints(pts) {
+  if (!Array.isArray(pts) || pts.length === 0) return [];
+  const clean = pts.filter(p =>
+    p?.geometry?.coordinates &&
+    isFinite(p.geometry.coordinates[0]) &&
+    isFinite(p.geometry.coordinates[1])
+  );
+  if (clean.length < 2) return clean;
+  return buildOrderedRoutePoints(clean);
+}
+
+function hybridDecision(p1, p2, osrmMeters) {
+  const straightKm = haversine(p1.geometry.coordinates, p2.geometry.coordinates);
+  const osrmKm = (typeof osrmMeters === 'number' && isFinite(osrmMeters))
+    ? osrmMeters / 1000 : Infinity;
+  return osrmKm > straightKm * 1.4
+    ? { mode:'walk', km:straightKm }
+    : { mode:'osrm', km:osrmKm };
+}
+
+const __crc32Table = (function() {
+  const t = new Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c;
+  }
+  return t;
+})();
+
+function crc32(str) {
+  let crc = 0 ^ (-1);
+  for (let i = 0; i < str.length; i++)
+    crc = (crc >>> 8) ^ __crc32Table[(crc ^ str.charCodeAt(i)) & 0xFF];
+  return (crc ^ (-1)) >>> 0;
+}
+
+function escapeHTML(str) {
+  return String(str).replace(/[&<>"']/g, t =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[t])
+  );
+}
+
+// ✅ LRU Cache برای OSRM
+class LRUCache {
+  constructor(maxSize = 500) {
+    this.maxSize = maxSize;
+    this.cache = new Map();
+  }
+  get(key) {
+    if (!this.cache.has(key)) return undefined;
+    const value = this.cache.get(key);
+    this.cache.delete(key);
+    this.cache.set(key, value);
+    return value;
+  }
+  set(key, value) {
+    if (this.cache.has(key)) this.cache.delete(key);
+    this.cache.set(key, value);
+    if (this.cache.size > this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      this.cache.delete(firstKey);
+    }
+  }
+  clear() { this.cache.clear(); }
+  size() { return this.cache.size; }
+}
+</script>
+</head>
+
+<body>
+
+<!-- ===== بخش ۲: المان‌های HTML ===== -->
+<select id="tileSelector"></select>
+<select id="excelValueSelector"
+  style="position:absolute;top:130px;right:10px;z-index:10;padding:6px;border-radius:8px;font-family:Tahoma;font-weight:700">
+  <option value="">انتخاب</option>
+</select>
+<button id="toggleRouteBtn">🚫 نمایش مسیرها</button>
+<button id="clearRectsBtn">🧹 حذف مستطیل‌ها</button>
+<div id="map"></div>
+<div id="coordEditPanel">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <span style="font-weight:700;font-size:14px">✏️ ویرایش نقطه <span id="coordEditTitle" style="font-size:12px;color:#aaa"></span></span>
+    <span onclick="closeCoordPanel()" style="cursor:pointer;font-size:18px;color:#aaa;padding:0 4px">✕</span>
+  </div>
+  <div class="coord-edit-row">
+    <div><label>Lat</label><input type="number" id="coordEditLat" step="0.000001"/></div>
+    <div><label>Lon</label><input type="number" id="coordEditLon" step="0.000001"/></div>
+  </div>
+  <div id="coordEditFields"></div>
+  <div class="btn-row">
+    <button id="coordEditApply">✔ اعمال</button>
+    <button id="coordEditCancel" onclick="closeCoordPanel()">✕ لغو</button>
+  </div>
+</div>
+
+<a onclick="openGoogleExternal()"
+   style="position:fixed;bottom:14px;right:14px;z-index:999999;
+          background:#1a73e8;color:white;width:44px;height:44px;
+          border-radius:50%;display:flex;align-items:center;justify-content:center;
+          font-size:20px;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer;"
+   title="باز کردن مسیر در Google Maps">🧭</a>
+
+<!-- ===== بخش ۳: کتابخانه‌ها ===== -->
+<script src="./libs/maplibre-gl.js"></script>
+<script src="./libs/mapbox-gl-draw.js"></script>
+<script src="./libs/turf.min.js"></script>
+<script src="./libs/qwebchannel.js"></script>
+<script src="./libs/rbush.min.js"></script>
+
+<!-- ===== بخش ۴: مدیریت نمایش مارکرها ===== -->
+<script>
+let markerTree = new RBush();
+let markerUpdateTimer  = null;
+let markerUpdatePending = false;
+let lastBoundsKey      = null;
+let markerBoundsCache  = new Map();
+let visibleMarkers     = new Set();
+
+function getBoundsKey(bounds) {
+  const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
+  return [sw.lat.toFixed(4), sw.lng.toFixed(4),
+          ne.lat.toFixed(4), ne.lng.toFixed(4)].join('|');
+}
+
+function updateVisibleMarkersFast() {
+    if (!map) return;
+    const bounds = map.getBounds();
+    if (!bounds) return;
+    const key = getBoundsKey(bounds);
+    if (key === lastBoundsKey) return;
+    lastBoundsKey = key;
+
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+    const latPad = (ne.lat - sw.lat) * 0.15;
+    const lngPad = (ne.lng - sw.lng) * 0.15;
+
+    const searchBox = {
+        minX: sw.lng - lngPad,
+        minY: sw.lat - latPad,
+        maxX: ne.lng + lngPad,
+        maxY: ne.lat + latPad
+    };
+
+    const visibleItems = markerTree.search(searchBox);
+    const nextVisible = new Set();
+
+    visibleItems.forEach(item => {
+        const id = item.id;
+        nextVisible.add(String(id));
+        const marker = markersById[id];
+        if (marker) {
+            const el = marker._element;
+            if (el && el.style.display !== 'flex') el.style.display = 'flex';
+        }
+    });
+
+    visibleMarkers.forEach(id => {
+        if (nextVisible.has(id)) return;
+        const marker = markersById[id];
+        if (marker) {
+            const el = marker._element;
+            if (el && el.style.display !== 'none') el.style.display = 'none';
+        }
+    });
+
+    visibleMarkers = nextVisible;
+    window.currentVisibleMarkerIds = nextVisible;
+}
+
+function requestVisibleMarkersUpdate() {
+  if (markerUpdatePending) return;
+  markerUpdatePending = true;
+  clearTimeout(markerUpdateTimer);
+  markerUpdateTimer = setTimeout(() => {
+    markerUpdatePending = false;
+    markerUpdateTimer = null;
+    requestAnimationFrame(updateVisibleMarkersFast);
+  }, 50);
+}
+
+function clearMarkerCache(id) { markerBoundsCache.delete(id); }
+function updateMarkerCache(id, ll) { markerBoundsCache.set(id, {lng:ll.lng, lat:ll.lat}); }
+</script>
+
+<!-- ===== بخش ۵: CONFIG و ساخت نقشه ===== -->
+<script>
+const TILE_SOURCES = {
+  "OpenStreetMap":   "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  "CartoDB Light":   "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+  "Esri Terrain2":   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+  "OpenTopoMap":     "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
+  "OSM HOT":         "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+  "Google Maps":     "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
+  "CartoDB Dark":    "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+};
+
+const routeColors = [
+  "Navy","Crimson","ForestGreen","Orange","Teal",
+  "Indigo","Gold","DarkViolet","SaddleBrown","DeepPink",
+  "DodgerBlue","Maroon","Olive","DarkCyan","Peru",
+  "MediumPurple","Tomato","SeaGreen","RoyalBlue","HotPink"
+];
+
+let lastGeoJSON = null;
+let map = null;
+let draw = null;
+
+const tileSelector = document.getElementById('tileSelector');
+Object.entries(TILE_SOURCES).forEach(([name, url]) => {
+  const opt = document.createElement('option');
+  opt.value = url; opt.textContent = name;
+  tileSelector.appendChild(opt);
+});
+
+function getStyle(tileURL) {
+  return {
+    version: 8,
+    sources: { osm: { type:'raster', tiles:[tileURL], tileSize:256 } },
+    layers:  [{ id:'base', type:'raster', source:'osm' }]
+  };
+}
+
+map = new maplibregl.Map({
+  container: 'map',
+  style: getStyle(tileSelector.value || Object.values(TILE_SOURCES)[0]),
+  center: [54, 32],
+  zoom: 4.5
+});
+
+function zoomToBounds(lats, lons) {
+  if (!lats || lats.length === 0) return;
+  const bounds = new maplibregl.LngLatBounds();
+  for (let i = 0; i < lats.length; i++) bounds.extend([lons[i], lats[i]]);
+  map.fitBounds(bounds, { padding:40, duration:0 });
+}
+
+map.on('move', requestVisibleMarkersUpdate);
+map.on('zoom', requestVisibleMarkersUpdate);
+
+tileSelector.addEventListener('change', () => {
+  removeAllRoutes();
+  clearNumberMarkers();
+  if (map.getLayer('points-text')) map.removeLayer('points-text');
+  if (map.getLayer('points-circle')) map.removeLayer('points-circle');
+  if (map.getSource('points-source')) map.removeSource('points-source');
+  clearMarkersById();
+  map.setStyle(getStyle(tileSelector.value));
+});
+
+map.on('styledata', () => {
+    if (lastGeoJSON) {
+        updateMapFromPython(lastGeoJSON);
+    }
+});
+
+let showRoutes = false;
+let hasFitBoundsOnce = false;
+
+document.getElementById('toggleRouteBtn').onclick = () => {
+  showRoutes = !showRoutes;
+  routeUseSelectedOnly = (typeof selectedIDs !== 'undefined' && selectedIDs.size > 0);
+  document.getElementById('toggleRouteBtn').textContent =
+    showRoutes ? '❌ مخفی‌کردن مسیرها' : '✅ نمایش مسیرها';
+  if (!showRoutes) {
+    removeAllRoutes();
+    clearNumberMarkers();
+  } else {
+    updateMapFromPython(lastGeoJSON || { type:'FeatureCollection', features:[] });
+    setTimeout(applyExcelStyleToRouteMarkers, 50);
+  }
+};
+
+draw = new MapboxDraw({
+  displayControlsDefault: false,
+  controls: { line_string:true, polygon:true, trash:true },
+  modes: MapboxDraw.modes,
+  styles: [
+    { id:'gl-draw-line-active', type:'line', filter:['all',['==','$type','LineString'],['!=','mode','static']], layout:{'line-cap':'round','line-join':'round'}, paint:{'line-color':'#ff0000','line-width':3} },
+    { id:'gl-draw-polygon-fill-active', type:'fill', filter:['all',['==','$type','Polygon'],['!=','mode','static']], paint:{'fill-color':'#ff0000','fill-opacity':0.15} },
+    { id:'gl-draw-polygon-stroke-active', type:'line', filter:['all',['==','$type','Polygon'],['!=','mode','static']], paint:{'line-color':'#ff0000','line-width':3} },
+    { id:'gl-draw-vertex', type:'circle', filter:['all',['==','meta','vertex'],['==','$type','Point']], paint:{'circle-radius':6,'circle-color':'#00ff00'} }
+  ]
+});
+
+map.on('load', () => {
+    map.addControl(draw, 'top-left');
+});
+
+map.on('draw.create', (e) => {
+  const feature = e.features[0];
+  if (!feature || feature.geometry.type !== 'Polygon') return;
+  const polygonCoords = feature.geometry.coordinates[0];
+  let selectedCount = 0;
+  for (const id in markersById) {
+    const m = markersById[id];
+    if (!m || !m._element) continue;
+    try {
+      const pos = m.getLngLat();
+      if (isPointInPolygon({lng:pos.lng, lat:pos.lat}, polygonCoords)) {
+        selectedIDs.add(Number(id));
+        m._element.classList.add('marker-selected-animated');
+        selectedCount++;
+      }
+    } catch(e) {}
+  }
+  console.log(`${selectedCount} نقطه با پلیگان انتخاب شد`);
+  draw.delete(feature.id);
+  setTimeout(() => draw.changeMode('draw_polygon'), 0);
+});
+
+document.getElementById('clearRectsBtn').onclick = () => {
+  const box = document.getElementById('draw-box');
+  if (box && box.parentNode) box.parentNode.removeChild(box);
+  try {
+    const all = draw.getAll();
+    if (all?.features?.length) all.features.forEach(f => f?.id && draw.delete(f.id));
+  } catch(e) {}
+  clearSelections();
+};
+</script>
+
+<!-- ===== بخش ۶: سیستم مارکرها ===== -->
+<script>
+let markersById = {};
+let routeSources = {};
+let endpointMarkers = [];
+let numberMarkers = [];
+let selectedIDs = new Set();
+let currentOpenPopup = null;
+
+function isLightColor(color) {
+  if (color.startsWith('#')) {
+    let hex = color.replace('#','');
+    if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
+    const r = parseInt(hex.substring(0,2),16);
+    const g = parseInt(hex.substring(2,4),16);
+    const b = parseInt(hex.substring(4,6),16);
+    return (r*299 + g*587 + b*114) / 1000 > 150;
+  }
+  const m = color.match(/\d+/g);
+  if (m) {
+    const [r,g,b] = m.map(Number);
+    return (r*299 + g*587 + b*114) / 1000 > 150;
+  }
+  const tmp = document.createElement('div');
+  tmp.style.color = color;
+  document.body.appendChild(tmp);
+  const computed = getComputedStyle(tmp).color;
+  document.body.removeChild(tmp);
+  return isLightColor(computed);
+}
+
+function applyMarkerShape(el, shape) {
+  el.style.clipPath = '';
+  el.style.borderRadius = '';
+  el.style.width  = '26px';
+  el.style.height = '26px';
+  el.style.transform = 'none';
+
+  switch(shape) {
+    case 'circle':
+      el.style.borderRadius = '50%'; break;
+    case 'square':
+      el.style.borderRadius = '3px'; break;
+    case 'rounded_square':
+      el.style.borderRadius = '8px'; break;
+    case 'pill':
+      el.style.width  = '38px';
+      el.style.height = '22px';
+      el.style.borderRadius = '50%'; break;
+    case 'hexagon':
+      el.style.width  = '32px';
+      el.style.height = '32px';
+      el.style.clipPath = 'polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%)'; break;
+    case 'octagon':
+      el.style.width  = '32px';
+      el.style.height = '32px';
+      el.style.clipPath = 'polygon(30% 0%,70% 0%,100% 30%,100% 70%,70% 100%,30% 100%,0% 70%,0% 30%)'; break;
+    case 'diamond':
+      el.style.clipPath = 'polygon(50% 0%,100% 50%,50% 100%,0% 50%)'; break;
+    default:
+      el.style.borderRadius = '50%';
+  }
+}
+
+function createOrUpdateMarker(coord, props) {
+  if (!props || !('id' in props)) return null;
+
+  const id = props.id;
+  const routeIndex = Math.max(0, Number(props.route) || 0);
+  const routeColor = props.color ?? routeColors[routeIndex % routeColors.length] ?? 'gray';
+  const shape = props.marker_shape || props.shape || 'circle';
+
+  if (markersById[id]) {
+    const m = markersById[id];
+    const el = m._element;
+    const sameCoord = m._lastCoord && m._lastCoord[0]===coord[0] && m._lastCoord[1]===coord[1];
+    if (sameCoord) return m;
+    m.setLngLat(coord);
+    updateMarkerCache(id, {lng:coord[0], lat:coord[1]});
+    m._lastCoord = coord.slice();
+    if (m.__rbushItem) {
+      markerTree.remove(m.__rbushItem);
+      m.__rbushItem = { minX:coord[0], minY:coord[1], maxX:coord[0], maxY:coord[1], id };
+      markerTree.insert(m.__rbushItem);
+    }
+    return m;
+  }
+
+  const div = document.createElement('div');
+  div.className = 'marker';
+  div.style.background = routeColor;
+  div.style.color = isLightColor(routeColor) ? 'black' : 'white';
+  div.textContent = routeIndex;
+  applyMarkerShape(div, shape);
+
+  const marker = new maplibregl.Marker(div).setLngLat(coord).addTo(map);
+  updateMarkerCache(id, {lng:coord[0], lat:coord[1]});
+  marker._props = {...props, shape, color:routeColor};
+  marker._lastCoord = coord.slice();
+
+  div.addEventListener('click', e => {
+    e.stopPropagation();
+    const _id = props.id;
+    const already = selectedIDs.has(_id);
+
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      if (already) {
+        selectedIDs.delete(_id);
+        div.classList.remove('marker-selected-animated');
+      } else {
+        selectedIDs.add(_id);
+        div.classList.add('marker-selected-animated');
+      }
+    } else {
+      if (already) {
+        selectedIDs.delete(_id);
+        div.classList.remove('marker-selected-animated');
+      } else {
+        clearSelections();
+        selectedIDs.add(_id);
+        div.classList.add('marker-selected-animated');
+      }
+    }
+
+    if (!e.shiftKey && !e.ctrlKey && !e.metaKey && selectedIDs.has(_id)) {
+      const blacklist = ['id','lat','lng','route','color','shape','icon','marker_shape'];
+      let rows = '';
+      for (const k in props) {
+        if (!blacklist.includes(k))
+          rows += `<tr><td><b>${escapeHTML(k)}</b></td><td>${escapeHTML(String(props[k]))}</td></tr>`;
+      }
+      const popupHTML = `
+        <div class="popup-container">
+          <div class="popup-header">مشخصات</div>
+          <table class="popup-table">${rows}</table><br/>
+          <select onchange="sendToPython('assign/${props.id}/' + this.value); setTimeout(()=>clearSelections(),50);">
+            <option value=''>مسیر جدید</option>
+            ${(window.routeOptionsList||[]).map(r=>`<option value='${escapeHTML(String(r))}'>${escapeHTML(String(r))}</option>`).join('')}
+          </select><br/><br/>
+          <button class='route-btn' onclick="sendToPython('bulk_assign_new/${props.id}'); setTimeout(()=>clearSelections(),50);">➕ مسیر جدید</button>
+        </div>`;
+      if (currentOpenPopup) {currentOpenPopup.remove(); currentOpenPopup = null;}
+      currentOpenPopup = new maplibregl.Popup({closeButton:true, closeOnClick:true})
+        .setLngLat(marker.getLngLat())
+        .setHTML(popupHTML)
+        .addTo(map);
+    }
+  });
+
+  div.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    if (selectedIDs.has(props.id)) {
+      selectedIDs.delete(props.id);
+      div.classList.remove('marker-selected-animated');
+    } else {
+      selectedIDs.add(props.id);
+      div.classList.add('marker-selected-animated');
+    }
+  });
+
+  marker.__rbushItem = {minX:coord[0], minY:coord[1], maxX:coord[0], maxY:coord[1], id};
+  markerTree.insert(marker.__rbushItem);
+  markersById[id] = marker;
+
+  return marker;
+}
+
+function removeMarker(id) {
+  const m = markersById[id];
+  if (!m) return;
+  if (m.__rbushItem) markerTree.remove(m.__rbushItem);
+  try { m.remove(); } catch(e) {}
+  delete markersById[id];
+  clearMarkerCache(id);
+}
+
+function clearSelections() {
+  selectedIDs.clear();
+  Object.values(markersById).forEach(m => {
+    try { m.getElement().classList.remove('marker-selected-animated'); } catch(e) {}
+  });
+  if (currentOpenPopup) { currentOpenPopup.remove(); currentOpenPopup = null; }
+}
+
+function clearMarkersById() {
+  Object.values(markersById).forEach(m => {
+    try { m.remove(); } catch(e) {}
+  });
+  markersById = {};
+  markerBoundsCache.clear();
+  visibleMarkers.clear();
+  markerTree = new RBush();
+}
+
+function clearEndpointMarkers() {
+  endpointMarkers.forEach(m => {
+    try {
+      if (m.getPopup) { const p = m.getPopup(); if (p) p.remove(); }
+      m.remove();
+    } catch(e) {}
+  });
+  endpointMarkers = [];
+}
+
+function clearNumberMarkers() {
+  numberMarkers.forEach(m => {
+    try {
+      if (m.getPopup) { const p = m.getPopup(); if (p) p.remove(); }
+      m.remove();
+    } catch(e) {}
+  });
+  numberMarkers = [];
+}
+</script>
+
+<!-- ===== بخش ۷: انتخاب مستطیلی ===== -->
+<script>
+function isPointInPolygon(point, polygon) {
+  const x = point.lng, y = point.lat;
+  let inside = false;
+  for (let i = 0, j = polygon.length-1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0], yi = polygon[i][1];
+    const xj = polygon[j][0], yj = polygon[j][1];
+    if (((yi>y) !== (yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) inside = !inside;
+  }
+  return inside;
+}
+
+map.on('mousedown', e => {
+  if (!e.originalEvent.shiftKey) return;
+  const start = e.lngLat;
+  const canvas = map.getCanvasContainer();
+  const box = document.createElement('div');
+  box.id = 'draw-box';
+  box.style.cssText = 'position:absolute;border:2px solid #00ff00;background:rgba(0,255,0,0.1);pointer-events:none;z-index:1000;';
+  canvas.appendChild(box);
+
+  let safetyTimer = null;
+
+  const cleanup = () => {
+    document.removeEventListener('mousemove', drawRect);
+    document.removeEventListener('mouseup', onUp);
+    if (safetyTimer) clearTimeout(safetyTimer);
+    if (canvas.contains(box)) canvas.removeChild(box);
+  };
+
+  const drawRect = ev => {
+    const cur = map.unproject([ev.clientX, ev.clientY]);
+    const p1 = map.project(start), p2 = map.project(cur);
+    box.style.left = Math.min(p1.x,p2.x)+'px';
+    box.style.top = Math.min(p1.y,p2.y)+'px';
+    box.style.width = Math.abs(p2.x-p1.x)+'px';
+    box.style.height = Math.abs(p2.y-p1.y)+'px';
+  };
+
+  const onUp = () => {
+    const left = parseInt(box.style.left) || 0;
+    const top = parseInt(box.style.top) || 0;
+    const width = parseInt(box.style.width) || 0;
+    const height = parseInt(box.style.height) || 0;
+    cleanup();
+    const p1 = map.unproject([left, top]);
+    const p2 = map.unproject([left+width, top+height]);
+    const minLng = Math.min(p1.lng, p2.lng), maxLng = Math.max(p1.lng, p2.lng);
+    const minLat = Math.min(p1.lat, p2.lat), maxLat = Math.max(p1.lat, p2.lat);
+    let count = 0;
+    for (const id in markersById) {
+      const m = markersById[id];
+      if (!m || !m._element) continue;
+      try {
+        const pos = m.getLngLat();
+        if (pos.lng>=minLng && pos.lng<=maxLng && pos.lat>=minLat && pos.lat<=maxLat) {
+          selectedIDs.add(Number(id));
+          m._element.classList.add('marker-selected-animated');
+          count++;
+        }
+      } catch(e) {}
+    }
+  };
+
+  document.addEventListener('mousemove', drawRect);
+  document.addEventListener('mouseup', onUp);
+  safetyTimer = setTimeout(cleanup, 30000);
+});
+</script>
+
+<!-- ===== بخش ۸: منوی راست‌کلیک ===== -->
+<script>
+map.on('contextmenu', e => {
+  if (selectedIDs.size === 0) { alert('هیچ نقطه‌ای انتخاب نشده'); return; }
+  const ids = Array.from(selectedIDs).join(',');
+  const popupDiv = document.createElement('div');
+  popupDiv.innerHTML = `
+    <b>انتخاب گروهی</b><br/>تعداد: ${selectedIDs.size}<br/><br/>
+    <button id="copySelectedBtn" class="SelectedBtn">📋 کپی</button>
+    <button id="btnDeleteRoute" class="delete-btn">🗑 حذف</button><br/>
+    <select id="groupRouteDropdown">
+      <option value=''>تغییر مسیر</option>
+      ${(window.routeOptionsList||[]).map(r=>`<option value='${escapeHTML(String(r))}'>${escapeHTML(String(r))}</option>`).join('')}
+    </select><br/><br/>
+    <button id="btnNewRoute" class="route-btn">➕ مسیر جدید</button>
+  `;
+  popupDiv.querySelector('#groupRouteDropdown').onchange = function() {
+    sendToPython('bulk_assign/'+ids+'/'+this.value); setTimeout(()=>clearSelections(),50);
+  };
+  popupDiv.querySelector('#btnNewRoute').onclick = () => {
+    sendToPython('bulk_assign_new/'+ids); setTimeout(()=>clearSelections(),50);
+  };
+  popupDiv.querySelector('#btnDeleteRoute').onclick = () => {
+    sendToPython('bulk_assign/'+ids+'/0'); setTimeout(()=>clearSelections(),50);
+  };
+  popupDiv.querySelector('#copySelectedBtn').onclick = copySelectedPoints;
+
+  if (currentOpenPopup) {currentOpenPopup.remove(); currentOpenPopup = null;}
+  currentOpenPopup = new maplibregl.Popup({closeButton:false, closeOnClick:true})
+    .setLngLat(e.lngLat).setDOMContent(popupDiv).addTo(map);
+});
+
+async function copySelectedPoints() {
+    try {
+        if (!selectedIDs || selectedIDs.size === 0) {
+            showToast('هیچ نقطه‌ای انتخاب نشده', 'error');
+            return;
+        }
+        const firstId = selectedIDs.values().next().value;
+        const firstMarker = markersById[firstId];
+        if (!firstMarker || !firstMarker._props) {
+            showToast('داده‌ای وجود ندارد', 'error');
+            return;
+        }
+        const EXCLUDE_COLUMNS = ['color', 'icon', 'marker_shape', 'shape', 'popup', 'route'];
+        const allColumns = Object.keys(firstMarker._props);
+        const columns = allColumns.filter(col => !EXCLUDE_COLUMNS.includes(col));
+        if (columns.length === 0) {
+            showToast('هیچ ستون معتبری وجود ندارد', 'error');
+            return;
+        }
+        const pointCount = selectedIDs.size;
+        const text = await new Promise(resolve => {
+            setTimeout(() => {
+                const lines = [columns.join('\t')];
+                selectedIDs.forEach(id => {
+                    const m = markersById[id];
+                    if (!m || !m._props) return;
+                    const row = columns.map(col => {
+                        const v = m._props[col];
+                        if (v == null) return '';
+                        return String(v).replace(/\t/g, ' ').replace(/\n/g, ' ');
+                    });
+                    lines.push(row.join('\t'));
+                });
+                resolve(lines.join('\n'));
+            }, 0);
+        });
+        await copyToClipboard(text);
+        showToast(`${pointCount} ردیف کپی شد ✅`, 'success');
+    } catch (error) {
+        showToast('کپی ناموفق: ' + error.message, 'error');
+    }
+}
+
+async function copyToClipboard(text) {
+    try {
+        if (navigator.clipboard) {
+            await navigator.clipboard.writeText(text);
+            return;
+        }
+    } catch (e) {}
+    return new Promise((resolve, reject) => {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        try {
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            if (successful) resolve();
+            else reject(new Error('execCommand failed'));
+        } catch (err) {
+            document.body.removeChild(textarea);
+            reject(err);
+        }
+    });
+}
+
+function showToast(message, type = 'success') {
+    const existingToast = document.getElementById('copy-toast');
+    if (existingToast) existingToast.remove();
+    const toast = document.createElement('div');
+    toast.id = 'copy-toast';
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: ${type === 'success' ? '#4CAF50' : '#f44336'};
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        font-family: Tahoma, sans-serif;
+        direction: rtl;
+        z-index: 10000;
+        transition: transform 0.3s ease-out;
+    `;
+    toast.innerHTML = `<span style="font-size: 18px; margin-left: 8px;">${type === 'success' ? '✅' : '❌'}</span> ${message}`;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => {
+        toast.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    setTimeout(() => {
+        toast.style.transform = 'translateX(-50%) translateY(100px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+</script>
+
+<!-- ===== بخش ۹: موتور رسم مسیر (OSRM) ===== -->
+<script>
+const __osrmCache = new LRUCache(500);
+let __osrmInflight = {};
+let __osrmQueue = {};
+
+// ✅ OSRM با Exponential Backoff Retry
+async function _fetchOsrmGeometry(coords, signal, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const url = 'https://routing.openstreetmap.de/routed-foot/route/v1/foot/'
+        + coords.map(c => c.join(',')).join(';')
+        + '?overview=full&geometries=geojson&steps=false';
+      const res = await fetch(url, { signal, timeout: 10000 });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      if (!json.routes?.length) throw new Error('No routes');
+      return json.routes[0].geometry;
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+      if (attempt < retries - 1) {
+        const delay = Math.pow(2, attempt) * 1000;
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
+function removeAllRoutes() {
+  Object.values(routeSources).forEach(r => {
+    try {
+      if (map.getLayer(r.sourceId)) map.removeLayer(r.sourceId);
+      if (map.getSource(r.sourceId)) map.removeSource(r.sourceId);
+    } catch(e) {}
+  });
+  routeSources = {};
+  clearEndpointMarkers();
+  clearNumberMarkers();
+  Object.values(__osrmInflight).forEach(ctrl => { try { ctrl.abort(); } catch(e) {} });
+  __osrmInflight = {};
+}
+
+function drawRealRoute(route, coords, color) {
+  if (coords.length < 2) return;
+  const safeRoute = String(route).replace(/[^a-zA-Z0-9_-]/g,'_');
+  const id = `line-${safeRoute}`;
+  const coordString = coords.map(c => c.join(',')).join('|');
+  const hash = String(crc32(coordString));
+
+  if (routeSources[route]?.hash === hash && map.getSource(id)) return;
+  
+  const cached = __osrmCache.get(hash);
+  if (cached) {
+    const feature = {type:'Feature', geometry:cached};
+    if (!map.getSource(id)) {
+      map.addSource(id, {type:'geojson', data:feature});
+      map.addLayer({id, type:'line', source:id, layout:{'line-cap':'round','line-join':'round'}, paint:{'line-color':color,'line-width':3}});
+    } else {
+      map.getSource(id).setData(feature);
+    }
+    routeSources[route] = {sourceId:id, hash};
+    return;
+  }
+
+  if (__osrmQueue[route]) clearTimeout(__osrmQueue[route]);
+  __osrmQueue[route] = setTimeout(async () => {
+    if (__osrmInflight[route]) {
+      try { __osrmInflight[route].abort(); } catch(e) {}
+    }
+    const ctrl = new AbortController();
+    __osrmInflight[route] = ctrl;
+    try {
+      const geom = await _fetchOsrmGeometry(coords, ctrl.signal);
+      __osrmCache.set(hash, geom);
+      const feature = {type:'Feature', geometry:geom};
+      if (!map.getSource(id)) {
+        map.addSource(id, {type:'geojson', data:feature});
+        map.addLayer({id, type:'line', source:id, layout:{'line-cap':'round','line-join':'round'}, paint:{'line-color':color,'line-width':2}});
+      } else {
+        map.getSource(id).setData(feature);
+      }
+      routeSources[route] = {sourceId:id, hash};
+    } catch(err) {
+      if (err.name !== 'AbortError') console.warn('OSRM error:', err);
+    } finally {
+      __osrmInflight[route] = null;
+    }
+  }, 250);
+}
+</script>
+
+<!-- ===== بخش ۱۰: موتور اصلی همگام‌سازی ===== -->
+<script>
+let _pendingGeo = null;
+let _pendingRafId = null;
+window.__orderedRoutePTS = {};
+
+function updateMapFromPython(newGeojson) {
+  _pendingGeo = newGeojson;
+  if (_pendingRafId != null) cancelAnimationFrame(_pendingRafId);
+  _pendingRafId = requestAnimationFrame(() => {
+    _pendingRafId = null;
+    actualUpdateMapFromPython(_pendingGeo);
+  });
+}
+
+function actualUpdateMapFromPython(newGeojson) {
+  if (!newGeojson?.features) newGeojson = {type:'FeatureCollection', features:[]};
+  lastGeoJSON = newGeojson;
+
+  const features = newGeojson.features;
+  const incomingIds = new Set();
+  const routePoints = {};
+
+  features.forEach(f => {
+    const id = f.properties.id;
+    incomingIds.add(id);
+    createOrUpdateMarker(f.geometry.coordinates, f.properties);
+    const r = f.properties.route || 0;
+    if (!routePoints[r]) routePoints[r] = [];
+    routePoints[r].push(f);
+  });
+
+  Object.keys(markersById).forEach(id => {
+    if (!incomingIds.has(Number(id))) removeMarker(Number(id));
+  });
+
+  Object.values(markersById).forEach(m => {
+    if (selectedIDs.has(m._props?.id)) m._element.classList.add('marker-selected-animated');
+  });
+
+  if (showRoutes) {
+    clearEndpointMarkers();
+    clearNumberMarkers();
+    Object.entries(routePoints).forEach(([route, pts]) => {
+      let effectivePts = pts;
+      if (routeUseSelectedOnly && selectedIDs.size > 0)
+        effectivePts = pts.filter(p => selectedIDs.has(p.properties.id));
+      if (effectivePts.length < 2) return;
+
+      const ordered = safeBuildOrderedRoutePoints(effectivePts);
+      if (!ordered || ordered.length < 2) return;
+
+      window.__orderedRoutePTS[route] = ordered;
+
+      const coords = ordered.map(p => p.geometry.coordinates);
+      const routeColor = (ordered[0]?.properties?.color) || routeColors[route % routeColors.length] || '#1e90ff';
+      drawRealRoute(route, coords, routeColor);
+
+      const WALK_SPEED_KMH = 4.2;
+      const STOP_MIN = 15;
+      const cumKm = new Array(ordered.length).fill(0);
+      const cumMin = new Array(ordered.length).fill(0);
+      cumMin[0] = STOP_MIN;
+
+      for (let i = 1; i < ordered.length; i++) {
+        const d = haversine(ordered[i-1].geometry.coordinates, ordered[i].geometry.coordinates);
+        cumKm[i] = cumKm[i-1] + d;
+        cumMin[i] = cumMin[i-1] + (d / WALK_SPEED_KMH) * 60 + STOP_MIN;
+      }
+
+      const totalKm = cumKm[ordered.length - 1];
+      const totalMin = cumMin[ordered.length - 1];
+
+      const startEl = document.createElement('div');
+      startEl.style.cssText = 'width:12px;height:12px;background:dodgerblue;border:3px solid navy;border-radius:50%;';
+      const startMarker = new maplibregl.Marker({element:startEl, offset:[0,-35]})
+        .setLngLat(ordered[0].geometry.coordinates)
+        .setPopup(new maplibregl.Popup({closeButton:false}).setText('شروع'))
+        .addTo(map);
+      endpointMarkers.push(startMarker);
+
+      const endEl = document.createElement('div');
+      endEl.style.cssText = `width:12px;height:12px;background:${totalKm>10?'red':totalKm<2?'green':'orange'};border:3px solid purple;border-radius:50%;`;
+      const endHTML = `<div style="direction:rtl;padding:8px;">
+        <div style="font-weight:bold;">🏁 پایان</div>
+        <div>📏 فاصله: <b>${totalKm.toFixed(2)}</b> کم</div>
+        <div>⏱ زمان: <b>${formatMinutes(totalMin)}</b></div>
+      </div>`;
+      const endMarker = new maplibregl.Marker({element:endEl, offset:[0,-35]})
+        .setLngLat(ordered[ordered.length-1].geometry.coordinates)
+        .setPopup(new maplibregl.Popup({closeButton:false}).setHTML(endHTML))
+        .addTo(map);
+      endpointMarkers.push(endMarker);
+
+      ordered.forEach((p, idx) => {
+        const el = document.createElement('div');
+        el.style.cssText = 'width:20px;height:20px;border-radius:50%;background:#0aa;border:2px solid #003;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:bold;';
+        el.textContent = idx + 1;
+        const nm = new maplibregl.Marker({element:el, offset:[0,-25]})
+          .setLngLat(p.geometry.coordinates)
+          .setPopup(new maplibregl.Popup({closeButton:false}).setHTML(`<div>📍 نقطه ${idx + 1}<br/>🛣 ${cumKm[idx].toFixed(2)}km</div>`))
+          .addTo(map);
+        numberMarkers.push(nm);
+      });
+    });
+  }
+
+  if ((window.forceFitOnExcelLoad || !hasFitBoundsOnce) && features.length > 0) {
+    const bounds = new maplibregl.LngLatBounds();
+    features.forEach(f => bounds.extend(f.geometry.coordinates));
+    map.fitBounds(bounds, {padding:50});
+    hasFitBoundsOnce = true;
+    window.forceFitOnExcelLoad = false;
+  }
+}
+</script>
+
+<!-- ===== بخش ۱۱: ارتباط با پایتون ===== -->
+<script>
+function sendToPython(msg) {
+  if (window.qtObject && typeof window.qtObject.receive === 'function') {
+    window.qtObject.receive(msg);
+  }
+}
+
+if (typeof qt !== 'undefined' && qt.webChannelTransport) {
+  new QWebChannel(qt.webChannelTransport, channel => {
+    window.qtObject = channel.objects.qtObject;
+  });
+}
+
+window.routeOptionsList = [0,1,2,3,4];
+window.excelNumericHeaders = [];
+window.selectedExcelHeader = null;
+
+function updateExcelHeaders(headers) {
+  window.excelNumericHeaders = headers || [];
+  const sel = document.getElementById('excelValueSelector');
+  sel.innerHTML = '<option value="">انتخاب</option>';
+  headers.forEach(h => {
+    const o = document.createElement('option');
+    o.value = h; o.textContent = h;
+    sel.appendChild(o);
+  });
+}
+
+document.getElementById('excelValueSelector').onchange = function() {
+  window.selectedExcelHeader = this.value || null;
+  setTimeout(applyExcelStyleToRouteMarkers, 50);
+};
+
+function updateRouteDropdown(routes) {
+  routes.sort((a,b) => Number(a) - Number(b));
+  window.routeOptionsList = routes;
+}
+
+// ✅ Google Maps URL Validation
+function openGoogleExternal() {
+  let pts = null;
+  const keys = Object.keys(window.__orderedRoutePTS || {});
+  if (keys.length) {
+    pts = window.__orderedRoutePTS[keys[0]].map(p => p.geometry.coordinates);
+  }
+  if (!pts || pts.length < 2) {
+    alert('مسیری یافت نشد');
+    return;
+  }
+  const origin = pts[0];
+  const dest = pts[pts.length - 1];
+  const MAX_WP = 23;
+  let middle = pts.slice(1, -1);
+  if (middle.length > MAX_WP) {
+    const step = (middle.length - 1) / (MAX_WP - 1);
+    middle = Array.from({length: MAX_WP}, (_, i) => middle[Math.round(i * step)]);
+  }
+  const waypoints = middle.map(c => `${c[1]},${c[0]}`).join('|');
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin[1]},${origin[0]}&destination=${dest[1]},${dest[0]}`;
+  if (waypoints && waypoints.length < 2000) {
+    url += `&waypoints=${encodeURIComponent(waypoints)}`;
+  }
+  url += '&travelmode=walking';
+  if (window.qtObject) {
+    window.qtObject.receive('open_url/' + url);
+  } else {
+    window.open(url, '_blank');
+  }
+}
+</script>
+
+<!-- ===== بخش ۱۲: Drag + ویرایش ===== -->
+<script>
+let _dragMode = false;
+let _editId = null;
+let _editProps = {};
+
+var _SKIP = new Set(['id','color','icon','marker_shape','shape','popup','route','lat','lng']);
+
+function toggleDragMode(activate) {
+  if (typeof activate === 'undefined') activate = !_dragMode;
+  _dragMode = activate;
+  if (_dragMode) {
+    Object.keys(markersById).forEach(id => _enableDrag(markersById[id]));
+    showToast('جابجایی فعال', 'success');
+  } else {
+    Object.keys(markersById).forEach(id => {
+      try { markersById[id].setDraggable(false); } catch(e) {}
+    });
+    closeCoordPanel();
+  }
+}
+
+function _enableDrag(marker) {
+  if (!marker) return;
+  try {
+    marker.setDraggable(true);
+    if (marker.__dragBound) return;
+    marker.__dragBound = true;
+    marker.on('dragend', () => {
+      const ll = marker.getLngLat();
+      const id = marker._props.id;
+      updateMarkerCache(id, ll);
+      marker._lastCoord = [ll.lng, ll.lat];
+      if (marker.__rbushItem) {
+        markerTree.remove(marker.__rbushItem);
+        marker.__rbushItem = {minX:ll.lng, minY:ll.lat, maxX:ll.lng, maxY:ll.lat, id};
+        markerTree.insert(marker.__rbushItem);
+      }
+      sendToPython('move_marker/' + id + '/' + ll.lng.toFixed(7) + '/' + ll.lat.toFixed(7));
+    });
+  } catch(e) {}
+}
+
+function openCoordPanel(marker) {
+  const props = marker._props || {};
+  const id = props.id;
+  const ll = marker.getLngLat();
+  if (currentOpenPopup) currentOpenPopup.remove();
+  _editId = id;
+  _editProps = {...props};
+  document.getElementById('coordEditLat').value = ll.lat.toFixed(7);
+  document.getElementById('coordEditLon').value = ll.lng.toFixed(7);
+  const name = props.name || ('#' + id);
+  document.getElementById('coordEditTitle').textContent = name;
+  const container = document.getElementById('coordEditFields');
+  container.innerHTML = '';
+  Object.keys(props).forEach(key => {
+    if (_SKIP.has(key)) return;
+    const row = document.createElement('div');
+    row.className = 'edit-field-row';
+    const lbl = document.createElement('span');
+    lbl.className = 'edit-field-label';
+    lbl.textContent = key;
+    row.appendChild(lbl);
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = String(props[key] || '');
+    inp.setAttribute('data-field', key);
+    row.appendChild(inp);
+    container.appendChild(row);
+  });
+  document.getElementById('coordEditPanel').style.display = 'block';
+}
+
+document.getElementById('coordEditApply').addEventListener('click', () => {
+  if (_editId === null) return;
+  const latVal = parseFloat(document.getElementById('coordEditLat').value);
+  const lonVal = parseFloat(document.getElementById('coordEditLon').value);
+  if (isNaN(latVal) || isNaN(lonVal) || latVal < -90 || latVal > 90) {
+    showToast('مختصات معتبر نیست', 'error');
+    return;
+  }
+  const marker = markersById[_editId];
+  if (!marker) { closeCoordPanel(); return; }
+  marker.setLngLat({lng:lonVal, lat:latVal});
+  updateMarkerCache(_editId, {lng:lonVal, lat:latVal});
+  marker._lastCoord = [lonVal, latVal];
+  sendToPython('move_marker/' + _editId + '/' + lonVal.toFixed(7) + '/' + latVal.toFixed(7));
+  showToast('تغییرات اعمال شد ✓', 'success');
+  closeCoordPanel();
+});
+
+function closeCoordPanel() {
+  document.getElementById('coordEditPanel').style.display = 'none';
+  _editId = null;
+}
+
+map.on('click', closeCoordPanel);
+</script>
+
+<!-- ===== بخش ۱۳: Excel Style Engine ===== -->
+<script>
+function applyExcelStyleToRouteMarkers() {
+  if (!window.selectedExcelHeader || !numberMarkers?.length) return;
+  const values = [];
+  numberMarkers.forEach(nm => {
+    const p = nm._props;
+    if (p && !isNaN(Number(p[window.selectedExcelHeader])))
+      values.push(Number(p[window.selectedExcelHeader]));
+  });
+  if (!values.length) return;
+  let min = Infinity, max = -Infinity;
+  values.forEach(v => {
+    if (v < min) min = v;
+    if (v > max) max = v;
+  });
+  const scale = v => max === min ? 0.5 : (v - min) / (max - min);
+  numberMarkers.forEach(nm => {
+    const el = nm.getElement(), p = nm._props;
+    if (!p) return;
+    const v = Number(p[window.selectedExcelHeader]);
+    if (isNaN(v)) return;
+    const t = scale(v);
+    const size = 10 + t * 11;
+    const hue = 120 * t;
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    el.style.border = `4px solid hsl(${hue},90%,35%)`;
+    el.style.background = `hsl(${hue},90%,55%)`;
+  });
+}
+</script>
+
+<!-- ===== بخش ۱۴: مدیریت حافظه ===== -->
+<script>
+if (window.__cleanupTimer) clearInterval(window.__cleanupTimer);
+window.__cleanupTimer = setInterval(() => {
+  if (!map || !map.getBounds()) return;
+  for (const id in markersById) {
+    const m = markersById[id];
+    if (m && !document.contains(m.getElement())) {
+      try { m.remove(); } catch(e) {}
+      delete markersById[id];
+    }
+  }
+}, 30000);
+
+window.addEventListener('beforeunload', () => {
+  if (window.__cleanupTimer) clearInterval(window.__cleanupTimer);
+  Object.values(__osrmInflight).forEach(ctrl => {
+    try { ctrl.abort(); } catch(e) {}
+  });
+});
+
+window.__mapReady = false;
+(function waitForMap() {
+  if (map && typeof map.on === 'function') {
+    window.__mapReady = true;
+  }
+})();
+</script>
+
+</body>
+</html>
